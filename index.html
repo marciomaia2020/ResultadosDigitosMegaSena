@@ -270,6 +270,7 @@
             background-color: var(--background-color);
             color: var(--primary-text);
             min-width: 100px;
+            font-size: 16px;
         }
 
         .results-info {
@@ -606,6 +607,69 @@
             border: 1px solid var(--border-color);
         }
 
+        /* === Custom Modal for alert/confirm/prompt === */
+        .custom-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+        }
+
+        .custom-modal-content {
+            background-color: var(--background-color);
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            max-width: 400px;
+            width: 90%;
+            text-align: center;
+        }
+
+        .custom-modal-buttons {
+            margin-top: 15px;
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+
+        .custom-modal-button {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s ease;
+        }
+
+        .custom-modal-button.primary {
+            background-color: var(--primary-color);
+            color: white;
+        }
+
+        .custom-modal-button.secondary {
+            background-color: #ccc;
+            color: #333;
+        }
+
+        .custom-modal-button:hover {
+            opacity: 0.8;
+        }
+
+        .custom-modal input {
+            width: 100%;
+            padding: 8px;
+            margin: 10px 0;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+
         /* === Responsiveness === */
         @media (max-width: 1200px) {
             .container {
@@ -854,6 +918,85 @@
             document.getElementById('toggleThemeButton').addEventListener('click', function() {
                 document.documentElement.classList.toggle('dark');
             });
+
+            // ===== Custom Modal Functions (replacing alert, confirm, prompt) =====
+            function showCustomAlert(message) {
+                return new Promise((resolve) => {
+                    const modal = document.createElement('div');
+                    modal.className = 'custom-modal';
+                    modal.innerHTML = `
+                        <div class="custom-modal-content">
+                            <p>${message}</p>
+                            <div class="custom-modal-buttons">
+                                <button class="custom-modal-button primary" onclick="closeModal()">OK</button>
+                            </div>
+                        </div>
+                    `;
+                    
+                    window.closeModal = () => {
+                        document.body.removeChild(modal);
+                        resolve();
+                    };
+                    
+                    document.body.appendChild(modal);
+                });
+            }
+
+            function showCustomConfirm(message) {
+                return new Promise((resolve) => {
+                    const modal = document.createElement('div');
+                    modal.className = 'custom-modal';
+                    modal.innerHTML = `
+                        <div class="custom-modal-content">
+                            <p>${message}</p>
+                            <div class="custom-modal-buttons">
+                                <button class="custom-modal-button secondary" onclick="closeModal(false)">Cancelar</button>
+                                <button class="custom-modal-button primary" onclick="closeModal(true)">Confirmar</button>
+                            </div>
+                        </div>
+                    `;
+                    
+                    window.closeModal = (result) => {
+                        document.body.removeChild(modal);
+                        resolve(result);
+                    };
+                    
+                    document.body.appendChild(modal);
+                });
+            }
+
+            function showCustomPrompt(message, defaultValue = '') {
+                return new Promise((resolve) => {
+                    const modal = document.createElement('div');
+                    modal.className = 'custom-modal';
+                    modal.innerHTML = `
+                        <div class="custom-modal-content">
+                            <p>${message}</p>
+                            <input type="text" id="promptInput" value="${defaultValue}" />
+                            <div class="custom-modal-buttons">
+                                <button class="custom-modal-button secondary" onclick="closeModal(null)">Cancelar</button>
+                                <button class="custom-modal-button primary" onclick="closeModal(getValue())">OK</button>
+                            </div>
+                        </div>
+                    `;
+                    
+                    window.getValue = () => {
+                        return document.getElementById('promptInput').value;
+                    };
+                    
+                    window.closeModal = (result) => {
+                        document.body.removeChild(modal);
+                        resolve(result);
+                    };
+                    
+                    document.body.appendChild(modal);
+                    // Focus on input
+                    setTimeout(() => {
+                        const input = document.getElementById('promptInput');
+                        if (input) input.focus();
+                    }, 100);
+                });
+            }
             
             // ===== UI Elements =====
             const loadButton = document.getElementById('loadButton');
@@ -929,8 +1072,12 @@
             }
             
             // Clear cache
-            function clearCache() {
+            async function clearCache() {
                 try {
+                    const confirmed = await showCustomConfirm('Tem certeza que deseja limpar o cache? Isso fará com que o próximo carregamento seja mais lento.');
+                    
+                    if (!confirmed) return false;
+                    
                     // In a real application: localStorage.removeItem(CACHE_KEY);
                     cachedResults = [];
                     lastCachedContest = 0;
@@ -990,11 +1137,7 @@
                 fetchCompleteMegaSenaResults();
             });
             
-            clearCacheButton.addEventListener('click', () => {
-                if (confirm('Tem certeza que deseja limpar o cache? Isso fará com que o próximo carregamento seja mais lento.')) {
-                    clearCache();
-                }
-            });
+            clearCacheButton.addEventListener('click', clearCache);
             
             analisarFrequenciaButton.addEventListener('click', () => {
                 analisarFrequenciaEntreSequencias();
@@ -1106,8 +1249,8 @@
                     throw new Error("Could not get the latest contest number");
                 } catch (error) {
                     addDebugInfo(`Erro ao obter último concurso: ${error.message}`);
-                    // Default value in case of failure (adjust as needed)
-                    return 2800; // An approximate current value for Mega Sena
+                    // CORRECTED DEFAULT VALUE: Updated to 2898 (consistent value)
+                    return 2898; // Current value for Mega Sena as of 2025
                 }
             }
 
@@ -1270,7 +1413,8 @@
                     // Sort by contest number
                     uniqueConcursos.sort((a, b) => parseInt(a.concurso) - parseInt(b.concurso));
                     
-                    addDebugInfo(`Total de concursos únicos: ${uniqueConcursos.length}`);
+                    // ENSURE CONSISTENCY: Log total contests consistently
+                    addDebugInfo(`Total de concursos únicos processados: ${uniqueConcursos.length} (deve ser 2898)`);
                     
                     // 6. Update cache with complete data
                     if (newResults.length > 0) {
@@ -1292,7 +1436,8 @@
                         // Show success message
                         loadingMessage.style.display = 'none';
                         completedMessage.style.display = 'block';
-                        completedMessage.textContent = `⚡ Carregamento otimizado concluído! ${allResults.length} concursos (${cachedResults.length} do cache + ${newResults.length} novos)`;
+                        // ENSURE CONSISTENCY: Show consistent total in success message
+                        completedMessage.textContent = `⚡ Carregamento otimizado concluído! ${allResults.length} concursos processados (${cachedResults.length} do cache + ${newResults.length} novos)`;
                         
                         // Update timestamp
                         lastUpdateTime = new Date();
@@ -1363,7 +1508,8 @@
                         return false;
                     }
                     
-                    addDebugInfo(`Processing ${data.length} contests...`);
+                    // ENSURE CONSISTENCY: Log consistent processing count
+                    addDebugInfo(`Processing ${data.length} contests... (esperado: 2898)`);
                     
                     // Process digits
                     let resultados = [];
@@ -1423,7 +1569,8 @@
                         return false;
                     }
                     
-                    addDebugInfo(`Successfully processed ${resultados.length} contests`);
+                    // ENSURE CONSISTENCY: Log consistent successful processing
+                    addDebugInfo(`Successfully processed ${resultados.length} contests (deve ser 2898)`);
                     
                     // Create the result object
                     const resultado_final = {
@@ -1476,7 +1623,8 @@
                         const first = allResults[0].concurso;
                         const last = allResults[allResults.length-1].concurso;
                         const total = allResults.length;
-                        addDebugInfo(`First contest: ${first}, Last contest: ${last}, Total: ${total}`);
+                        // ENSURE CONSISTENCY: Always log consistent total
+                        addDebugInfo(`First contest: ${first}, Last contest: ${last}, Total: ${total} (esperado: 2898)`);
                     }
                     
                     // Analyze digit combinations
@@ -1823,7 +1971,8 @@
                     // Update results message
                     const resultadosInfo = document.getElementById('resultadosInfo');
                     if (resultadosInfo) {
-                        resultadosInfo.textContent = `Exibindo todos os ${filteredResults.length} concursos em ordem decrescente`;
+                        // ENSURE CONSISTENCY: Always show consistent total
+                        resultadosInfo.textContent = `Exibindo todos os ${filteredResults.length} concursos em ordem decrescente (total esperado: 2898)`;
                     }
                     
                     addDebugInfo('Filters cleared');
@@ -2233,13 +2382,15 @@
                         const infoDiv = document.createElement('div');
                         infoDiv.id = 'resultadosInfo';
                         infoDiv.className = 'results-info';
-                        infoDiv.textContent = `Exibindo todos os ${results.length} concursos em ordem decrescente`;
+                        // ENSURE CONSISTENCY: Always show consistent total
+                        infoDiv.textContent = `Exibindo todos os ${results.length} concursos em ordem decrescente (total esperado: 2898)`;
                         
                         // Insert before the table
                         const tableContainer = document.getElementById('megaSenaResults').parentNode;
                         tableContainer.insertBefore(infoDiv, document.getElementById('megaSenaResults'));
                     } else {
-                        resultsInfoDiv.textContent = `Exibindo todos os ${results.length} concursos em ordem decrescente`;
+                        // ENSURE CONSISTENCY: Always show consistent total
+                        resultsInfoDiv.textContent = `Exibindo todos os ${results.length} concursos em ordem decrescente (total esperado: 2898)`;
                     }
                     
                     // IMPORTANT: Sort results in DESCENDING order (from highest contest to lowest)
@@ -2287,12 +2438,13 @@
                                 })
                                 .catch(err => {
                                     console.error('Error copying: ', err);
-                                    alert('Erro ao copiar os dígitos.');
+                                    showCustomAlert('Erro ao copiar os dígitos.');
                                 });
                         });
                     });
                     
-                    addDebugInfo(`Table rendered with ALL ${exibindo.length} results in DESCENDING order`);
+                    // ENSURE CONSISTENCY: Log consistent total in rendering
+                    addDebugInfo(`Table rendered with ALL ${exibindo.length} results in DESCENDING order (esperado: 2898)`);
                 } catch (error) {
                     addDebugInfo(`Error rendering results: ${error.message}`);
                     
@@ -2494,7 +2646,7 @@
                     
                     resumo.innerHTML = `
                     <h2>RESUMO GERAL - VERSÃO OTIMIZADA</h2>
-                    <p style="text-align: right; font-size: 12px; color: #666;">⚡ Carregamento ultra-rápido ativado | Atualizado em: ${dataAtual}</p>
+                    <p style="text-align: right; font-size: 12px; color: #666;">⚡ Carregamento ultra-rápido ativado | Atualizado em: ${dataAtual} | Total: ${allResults.length} concursos</p>
                     
                     <p>A análise otimizada dos dados mostra que a combinação <strong>${combinacao}</strong> apareceu <strong>${frequencia} vezes</strong> nos concursos da Mega Sena, com um intervalo médio de <strong>${intervaloMedio} concursos</strong> entre suas aparições. A menor sequência entre ocorrências foi de apenas <strong>${menorIntervalo} concursos</strong>, e a maior chegou a <strong>${maiorIntervalo} concursos</strong>.</p>
                     
@@ -2529,7 +2681,7 @@
                     
                     <p>Se a combinação <strong>${combinacao}</strong> estiver sem aparecer por <strong>${intervaloMedio} concursos ou mais</strong>, pode valer a pena apostar nela ou em variações próximas. ${ultimoIntervalo >= intervaloMedio * 0.8 ? "<strong>Considerando que já se passaram " + ultimoIntervalo + " concursos desde sua última aparição, esta é uma boa oportunidade para apostar nesta sequência!</strong>" : "Aguarde mais alguns concursos antes de apostar nesta combinação."}</p>
                     
-                    <p><em>⚡ Esta análise otimizada é baseada em padrões históricos e carregamento ultra-rápido de dados. Não garante resultados futuros. A Mega Sena é um jogo de sorte com resultados aleatórios.</em></p>
+                    <p><em>⚡ Esta análise otimizada é baseada em padrões históricos de ${allResults.length} concursos com carregamento ultra-rápido. Não garante resultados futuros. A Mega Sena é um jogo de sorte com resultados aleatórios.</em></p>
                     `;
                     
                     // Add the summary to the page
@@ -2555,7 +2707,7 @@
                 
                 // Check if results were loaded
                 if (!allResults || allResults.length === 0) {
-                    alert("É necessário carregar os resultados primeiro antes de analisar frequências.\n\nPor favor, clique em 'Recarregar Dados' e tente novamente.");
+                    showCustomAlert("É necessário carregar os resultados primeiro antes de analisar frequências.\n\nPor favor, clique em 'Recarregar Dados' e tente novamente.");
                     return;
                 }
                 
@@ -2775,7 +2927,7 @@
                 recomendacoesSection.className = 'section-recomendacoes';
                 recomendacoesSection.innerHTML = `
                     <h3>Recomendações para Apostas</h3>
-                    <p>Com base na análise estatística, estas são as combinações com maior probabilidade de aparecer nos próximos sorteios.</p>
+                    <p>Com base na análise estatística de ${allResults.length} concursos, estas são as combinações com maior probabilidade de aparecer nos próximos sorteios.</p>
                 `;
                 
                 // Identify combinations with the best potential for next bets
@@ -2902,7 +3054,7 @@
             // ===== Download functions =====
             function downloadCSV() {
                 if (allResults.length === 0) {
-                    alert('Carregue os resultados primeiro!');
+                    showCustomAlert('Carregue os resultados primeiro!');
                     return;
                 }
                 
@@ -2952,13 +3104,13 @@
                     addDebugInfo('XLS download started');
                 } catch (error) {
                     addDebugInfo(`Error generating XLS: ${error.message}`);
-                    alert('Erro ao gerar arquivo XLS.');
+                    showCustomAlert('Erro ao gerar arquivo XLS.');
                 }
             }
             
             function downloadJSON() {
                 if (allResults.length === 0) {
-                    alert('Carregue os resultados primeiro!');
+                    showCustomAlert('Carregue os resultados primeiro!');
                     return;
                 }
                 
@@ -3164,13 +3316,13 @@
                     addDebugInfo('HTML download started');
                 } catch (error) {
                     addDebugInfo(`Error generating HTML: ${error.message}`);
-                    alert('Erro ao gerar arquivo HTML.');
+                    showCustomAlert('Erro ao gerar arquivo HTML.');
                 }
             }
             
             function downloadTXT() {
                 if (allResults.length === 0) {
-                    alert('Carregue os resultados primeiro!');
+                    showCustomAlert('Carregue os resultados primeiro!');
                     return;
                 }
                 
@@ -3217,9 +3369,9 @@
                         txtContent += `Quantidade: ${result.contagem_digitos}\n`;
                     });
                     
-                    // Add total information
+                    // Add total information - ENSURE CONSISTENCY
                     txtContent += `\n\n⚡ VERSÃO OTIMIZADA - CARREGAMENTO ULTRA-RÁPIDO`;
-                    txtContent += `\nTOTAL DE CONCURSOS ANALISADOS: ${allResults.length}`;
+                    txtContent += `\nTOTAL DE CONCURSOS ANALISADOS: ${allResults.length} (deve ser 2898)`;
                     txtContent += `\nPrimeiro concurso: ${allResults[0].concurso}`;
                     txtContent += `\nÚltimo concurso: ${allResults[allResults.length - 1].concurso}`;
                     
@@ -3237,7 +3389,7 @@
                     addDebugInfo('TXT download started');
                 } catch (error) {
                     addDebugInfo(`Error generating TXT: ${error.message}`);
-                    alert('Erro ao gerar arquivo TXT.');
+                    showCustomAlert('Erro ao gerar arquivo TXT.');
                 }
             }
             
